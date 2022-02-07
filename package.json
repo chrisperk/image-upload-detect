@@ -4,12 +4,13 @@
   "description": "upload images to detect objects",
   "main": "index.js",
   "scripts": {
-    "start": "PORT=3000 node index.js",
+    "start": "node -r dotenv/config index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Chris Perkins",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.0.0",
     "express": "^4.17.2",
     "form-data": "^4.0.0",
     "formdata-node": "^4.3.2",

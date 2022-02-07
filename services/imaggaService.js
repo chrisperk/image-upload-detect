@@ -4,9 +4,11 @@ import fs from 'fs'
 import { updateImageObjectTags } from '../util/dbQueries.js'
 
 const apiKey = 'acc_5d586a89a42243a'
-const apiSecret = '29aeced6ffaedc4f8943f1d844c64d47'
+const apiSecret = process.env.IMAGGA_API_KEY
 
 export const uploadImage = (path, imageId) => {
+    console.log(apiSecret)
+
     return new Promise((resolve) => {
         const formData = new FormData()
         formData.append('image', fs.createReadStream(path))

@@ -6,8 +6,8 @@ export const db = knex({
     client: 'pg',
     connection: {
         host: '127.0.0.1',
-        user: 'me',
-        password: 'password',
+        user: process.env.DB_USER,
+        password: process.env.DB_PW,
         database: 'inspector_object',
     },
 })
