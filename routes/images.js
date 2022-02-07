@@ -5,8 +5,8 @@ import {
     getImages,
     getImageById,
 } from '../util/dbQueries.js'
-// import { uploadImage, getObjectsDetected } from './services/imaggaService.js'
 
+// Create images router
 const router = express.Router()
 
 // Create multer object to save image on server filesystem
@@ -14,10 +14,10 @@ const imageUpload = multer({
     dest: 'images',
 })
 
-// Image Upload Routes
+// Set up Image Upload resource
 router.post('/', imageUpload.single('image'), postImage)
 
-// Image Get Routes
+// Set up Image Get resources
 router.get('/', getImages)
 router.get('/:id', getImageById)
 

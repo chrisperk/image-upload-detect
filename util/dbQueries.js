@@ -1,8 +1,6 @@
 import knex from 'knex'
 import { v4 as uuidv4 } from 'uuid'
-import got from 'got'
-import { default as FormData } from 'form-data'
-import fs from 'fs'
+import { uploadImage } from '../services/imaggaService.js'
 
 export const db = knex({
     client: 'pg',
@@ -14,6 +12,7 @@ export const db = knex({
     },
 })
 
+// Routine to post image to db, conditionally calling imagga for object detection
 export const postImage = (req, res) => {
     const { filename, mimetype, size } = req.file
     const filepath = req.file.path
@@ -51,6 +50,7 @@ export const postImage = (req, res) => {
         )
 }
 
+// Routine to retrieve all images with optional objects query param filter
 export const getImages = (req, res) => {
     db.select('id', 'filename', 'filepath', 'mimetype', 'size', 'label', 'enableobjectdetection as enableObjectDetection', 'objectsdetected as objectsDetected')
         .from('image_files')
@@ -70,7 +70,7 @@ export const getImages = (req, res) => {
                     const objectsToFilter = req.query.objects.split(',')
                     images = images.filter(image => {
                         for (let i = 0; i < objectsToFilter.length; i++) {
-                            if (image.objectsDetected.includes(objectsToFilter[i])) {
+                            if (image.objectsDetected && image.objectsDetected.includes(objectsToFilter[i])) {
                                 return image
                             }
                         }
@@ -93,6 +93,7 @@ export const getImages = (req, res) => {
         )
 }
 
+// Routine to get image by id
 export const getImageById = (req, res) => {
     const { id } = req.params
     db.select('id', 'filename', 'filepath', 'mimetype', 'size', 'label', 'enableobjectdetection as enableObjectDetection', 'objectsdetected as objectsDetected')
@@ -123,29 +124,16 @@ export const getImageById = (req, res) => {
         )
 }
 
-const apiKey = 'acc_5d586a89a42243a'
-const apiSecret = '29aeced6ffaedc4f8943f1d844c64d47'
+// Routine to update image object tags
+export const updateImageObjectTags = (response, imageId, resolve) => {
+    const data = JSON.parse(response.body);
+    const objectTags = data.result.tags.map(tag => tag.tag.en);
 
-const uploadImage = (path, imageId) => {
-    return new Promise((resolve) => {
-        const formData = new FormData()
-        formData.append('image', fs.createReadStream(path))
-
-        got.post('https://api.imagga.com/v2/tags', {body: formData, username: apiKey, password: apiSecret})
-            .then(response => {
-                const data = JSON.parse(response.body);
-                const objectTags = data.result.tags.map(tag => tag.tag.en);
-
-                db('image_files')
-                    .where('id', imageId[0].id)
-                    .update({ 
-                        objectsdetected: db.raw('array_append(objectsdetected, ?)', [objectTags])
-                    })
-                    .returning('objectsdetected')
-                    .then(objectsDetected => resolve(objectsDetected[0].objectsdetected))
-            })
-            .catch(error => {
-                throw new Error(error);
-            })
-    })
+    db('image_files')
+        .where('id', imageId[0].id)
+        .update({ 
+            objectsdetected: db.raw('array_append(objectsdetected, ?)', [objectTags])
+        })
+        .returning('objectsdetected')
+        .then(objectsDetected => resolve(objectsDetected[0].objectsdetected))
 }

@@ -1,16 +1,8 @@
 import morgan from 'morgan'
 import express from 'express'
-import multer from 'multer'
-import knex from 'knex'
-import { v4 as uuidv4 } from 'uuid'
 import bodyParser from 'body-parser'
 
 import imagesRouter from './routes/images.js'
-// import { uploadImage, getObjectsDetected } from './services/imaggaService.js'
-
-import got from 'got'
-import { default as FormData } from 'form-data'
-import fs from 'fs'
 
 // Create express object
 const app = express()
@@ -25,6 +17,7 @@ app.use(
   })
 )
 
+// Set images router
 app.use('/images', imagesRouter);
 
 // Run express server
