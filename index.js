@@ -1,7 +1,6 @@
 import morgan from 'morgan'
 import express from 'express'
 import multer from 'multer'
-import path from 'path'
 import knex from 'knex'
 import { v4 as uuidv4 } from 'uuid'
 import bodyParser from 'body-parser'
@@ -29,25 +28,23 @@ const imageUpload = multer({
     dest: 'images',
 })
 
-const db = knex(
-    {
-        client: 'pg',
-        connection: {
-            host: '127.0.0.1',
-            user: 'me',
-            password: 'password',
-            database: 'inspector_object',
-        },
-    }
-)
+const db = knex({
+    client: 'pg',
+    connection: {
+        host: '127.0.0.1',
+        user: 'me',
+        password: 'password',
+        database: 'inspector_object',
+    },
+})
 
 // Image Upload Routes
 app.post('/images', imageUpload.single('image'), (req, res) => { 
-    const { filename, mimetype, size } = req.file;
-    const filepath = req.file.path;
-    let { label, enableobjectdetection } = req.body;
+    const { filename, mimetype, size } = req.file
+    const filepath = req.file.path
+    let { label, enableobjectdetection } = req.body
 
-    if (!label) label = `img_${uuidv4()}`;
+    if (!label) label = `img_${uuidv4()}`
 
     db.insert({
         filename,
@@ -55,19 +52,19 @@ app.post('/images', imageUpload.single('image'), (req, res) => {
         mimetype,
         size,
         label,
-        enableobjectdetection
+        enableobjectdetection,
     })
         .into('image_files')
         .returning('id')
         .then(async (id) => {
             if (enableobjectdetection) {
-                const objectsDetected = await uploadImage(filepath, id);
+                let objectsDetected = await uploadImage(filepath, id)
 
-                const parsedObjectsDetected = objectsDetected[0].replace("{", "[").replace("}", "]");
+                objectsDetected = JSON.parse(objectsDetected[0].replace("{", "[").replace("}", "]"))
     
-                res.status(200).json({ id, filename, filepath, mimetype, size, label, enableobjectdetection, parsedObjectsDetected});
+                res.status(200).json({ id, filename, filepath, mimetype, size, label, enableObjectDetection: enableobjectdetection, objectsDetected,})
             } else {
-                res.status(200).json({ id, filename, filepath, mimetype, size, label, enableobjectdetection});
+                res.status(200).json({ id, filename, filepath, mimetype, size, label, enableObjectDetection: enableobjectdetection,})
             }
         })
         .catch(err => res.status(500).json(
@@ -81,70 +78,31 @@ app.post('/images', imageUpload.single('image'), (req, res) => {
 
 // Image Get Routes
 app.get('/images', (req, res) => {
-    db.select('*')
+    db.select('id', 'filename', 'filepath', 'mimetype', 'size', 'label', 'enableobjectdetection as enableObjectDetection', 'objectsdetected as objectsDetected')
         .from('image_files')
         .then(images => {
             if (images) {
-                // const dirname = path.resolve();
-                // const fullfilepath = path.join(
-                //     dirname, 
-                //     images[0].filepath);
-                // let filteredImages = [];
-                // let newImages = [];
-                // newImages = images.map(image => {
-                //     console.log(`image.id: ${image.id}, type: ${typeof image.id}`);
-                    
-                //     const img = {
-                //         id: image.id,
-                //         filename: image.filename,
-                //         filepath: image.filepath,
-                //         mimetype: image.mimetype,
-                //         size: image.size,
-                //         label: image.label,
-                //         enableobjectdetection: image.enableobjectdetection,
-                //         objectsDetected: [],
-                //         object: image.object
-                //     }
-                //     console.log(`img.id: ${img.id}, type: ${typeof img.id}`);
-                //     img.objectsDetected.push(image.object);
-                //     return img;
-                //     });
+                images = images.map(image => {
+                    image.objectsDetected = JSON.parse(image.objectsDetected[0].replace("{", "[").replace("}", "]"))
+                    return image;
+                })
 
-                //     const key = 'id';
-                    
-                //     const filteredTags = [...new Map(newImages.map(item =>
-                //         [item[key], item.objectsDetected.push(item.object)]))];
-
-                //     console.log(filteredTags);
-
-                //     const arrayUniqueByKey = [...new Map(
-                //         newImages.map(item => {
-                //                 item.objectsDetected = filteredTags[item.id];
-                //                 return [item[key], item];
-                //             }))
-                //         .values()];
+                if (req.query.objects) {
+                    const objectsToFilter = req.query.objects.split(',')
+                    images = images.filter(image => {
+                        for (let i = 0; i < objectsToFilter.length; i++) {
+                            if (image.objectsDetected.includes(objectsToFilter[i])) {
+                                return image
+                            }
+                        }
+                    })
+                }
                 
-                // filteredImages = newImages.map(image => {
-                //     if (filteredImages.filter(img => {
-                //         console.log(`comparing image.id: ${image.id} to img.id: ${img.id}`)
-                //         return image.id === img.id;
-                //     }).length > 0) {
-                //         console.log('found it');
-                //         image.objectsDetected.push(image.object)
-                //         delete image.object;
-                //         return image;
-                //     } else {
-                //         delete image.object;
-                //         return image;
-                //     }
-                // })
-                return res
-                    .status(200)
-                    .json(images);
+                return res.status(200).json(images)
             }
             return Promise.reject(
-                new Error('Image does not exist')
-            );
+                new Error('No images found')
+            )
         })
         .catch(err => res
             .status(404)
@@ -152,26 +110,20 @@ app.get('/images', (req, res) => {
                 success: false, 
                 message: 'not found', 
                 stack: err.stack,
-            }),
+            })
         )
 })
 
 app.get('/images/:id', (req, res) => {
     const { id } = req.params
-    db.select('*')
+    db.select('id', 'filename', 'filepath', 'mimetype', 'size', 'label', 'enableobjectdetection as enableObjectDetection', 'objectsdetected as objectsDetected')
         .from('image_files')
         .where({ id })
         .then(images => {
             if (images[0]) {
-                // const dirname = path.resolve();
-                // const fullfilepath = path.join(
-                //     dirname, 
-                //     images[0].filepath)
-                return res
-                    .status(200)
-                    .json(images)
-                    // .type(images[0].mimetype)
-                    // .sendFile(fullfilepath)
+                images[0].objectsDetected = JSON.parse(images[0].objectsDetected[0].replace("{", "[").replace("}", "]"))
+
+                return res.status(200).json(images)
             }
             return Promise.reject(
                 new Error('Image does not exist')
@@ -183,7 +135,7 @@ app.get('/images/:id', (req, res) => {
                 success: false, 
                 message: 'not found', 
                 stack: err.stack,
-            }),
+            })
         )
 })
 
@@ -192,8 +144,8 @@ const apiSecret = '29aeced6ffaedc4f8943f1d844c64d47'
 
 const uploadImage = (path, imageId) => {
     return new Promise((resolve) => {
-        const formData = new FormData();
-        formData.append('image', fs.createReadStream(path));
+        const formData = new FormData()
+        formData.append('image', fs.createReadStream(path))
 
         got.post('https://api.imagga.com/v2/tags', {body: formData, username: apiKey, password: apiSecret})
             .then(response => {
@@ -206,7 +158,7 @@ const uploadImage = (path, imageId) => {
                         objectsdetected: db.raw('array_append(objectsdetected, ?)', [objectTags])
                     })
                     .returning('objectsdetected')
-                    .then(objectsDetected => resolve(objectsDetected[0].objectsdetected));
+                    .then(objectsDetected => resolve(objectsDetected[0].objectsdetected))
             })
             .catch(error => {
                 throw new Error(error);
