@@ -9,7 +9,7 @@ import {
 // Create images router
 const router = express.Router()
 
-// Create multer object to save image on server filesystem
+// Use multer to save attached request image on server filesystem
 const imageUpload = multer({
     dest: 'images',
 })

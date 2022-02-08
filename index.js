@@ -3,9 +3,10 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import dotenv  from 'dotenv'
 
-dotenv.config();
-
 import imagesRouter from './routes/images.js'
+
+// Initialize vars from .env file
+dotenv.config();
 
 // Create express object
 const app = express()
