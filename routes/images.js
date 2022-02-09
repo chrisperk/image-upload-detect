@@ -1,4 +1,7 @@
-import  express from 'express'
+import express from 'express'
+import path from 'path'
+import { dirname } from 'path'
+import { fileURLToPath } from 'url'
 import multer from 'multer'
 import { 
     postImage,
@@ -10,12 +13,18 @@ import {
 const router = express.Router()
 
 // Use multer to save attached request image on server filesystem
-const imageUpload = multer({
-    dest: 'images',
+const storage = multer.diskStorage({
+    destination: 'imageData',
+    // Save user uploaded image with original file name
+    filename: (req, file, callback) => {
+        callback(null, file.originalname)
+    }
 })
 
+const uploadImage = multer({storage: storage}).single('image')
+
 // Set up Image Upload resource
-router.post('/', imageUpload.single('image'), postImage)
+router.post('/', uploadImage, postImage)
 
 // Set up Image Get resources
 router.get('/', getImages)

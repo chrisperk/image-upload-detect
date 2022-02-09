@@ -1,9 +1,10 @@
 import morgan from 'morgan'
 import express from 'express'
 import bodyParser from 'body-parser'
-import dotenv  from 'dotenv'
+import dotenv from 'dotenv'
 
 import imagesRouter from './routes/images.js'
+import imageDataRouter from './routes/imageData.js'
 
 // Initialize vars from .env file
 dotenv.config();
@@ -20,9 +21,12 @@ app.use(
     extended: true,
   })
 )
+// express.static(path.join(__dirname, '/imageData'));
 
 // Set images router
-app.use('/images', imagesRouter);
+app.use('/images', imagesRouter)
+// Set imageData router
+app.use('/imageData', imageDataRouter)
 
 // Run express server
 const PORT = process.env.PORT
