@@ -33,7 +33,8 @@ export const postImage = (req, res) => {
     })
         .into('image_files')
         .returning('id')
-        .then(async (id) => {
+        .then(async rows => {
+            const id = rows[0].id
             // If request dictates image objects be detected call Imagga API for analysis and persist in DB
             if (enableObjectDetection.toLowerCase() === 'true') {
                 let objectsDetected = await analyzeImage(filepath, id)
@@ -158,7 +159,7 @@ export const updateImageObjectTags = (response, imageId, resolve) => {
 
     // Update image row's objectsdetected column with returned objects detected
     db('image_files')
-        .where('id', imageId[0].id)
+        .where('id', imageId)
         .update({ 
             objectsdetected: db.raw('array_append(objectsdetected, ?)', [objectTags])
         })
